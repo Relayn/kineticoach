@@ -52,7 +52,7 @@ jobs:
         run: poetry run mypy .
 
       - name: 8. Run security scanner
-        run: poetry run bandit -r src tests
+        run: poetry run bandit -c pyproject.toml -r src tests
 
       - name: 9. Run tests
         run: poetry run pytest
