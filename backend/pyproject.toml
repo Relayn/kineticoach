@@ -1,0 +1,52 @@
+[tool.poetry]
+name = "kineticoach-backend"
+version = "0.1.0"
+description = "Real-time squat analysis backend for KinetiCoach Telegram Mini App"
+authors = ["Alex <alex@example.com>"]
+readme = "README.md"
+packages = [{include = "app", from = "src"}]
+
+[tool.poetry.dependencies]
+python = "^3.11"
+fastapi = "^0.117.1"
+uvicorn = {extras = ["standard"], version = "^0.30.1"}
+websockets = "^12.0"
+pydantic = "^2.7.1"
+pydantic-settings = "^2.2.1"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.2.2"
+pytest-cov = "^5.0.0"
+ruff = "^0.5.0"
+mypy = "^1.10.0"
+bandit = "^1.7.9"
+semgrep = "^1.68.0"
+radon = "^6.0.1"
+pip-audit = "^2.7.3"
+detect-secrets = "^1.5.0"
+pre-commit = "^3.7.1"
+
+[tool.ruff]
+line-length = 88
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "W", "F", "I", "C90", "B"] # Стандартный набор + flake8-bugbear
+ignore = []
+
+[tool.mypy]
+python_version = "3.11"
+warn_return_any = true
+warn_unused_configs = true
+ignore_missing_imports = true # Начнем с этого, чтобы не блокировать разработку
+strict = true
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.bandit]
+# Исключаем директорию с тестами из сканирования bandit
+exclude_dirs = ["tests"]
+# Пропускаем проверку B101 (использование assert), т.к. в тестах это нормально
+skips = ["B101"]

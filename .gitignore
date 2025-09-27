@@ -1,0 +1,12 @@
+# IDE-specific files
+.idea/
+.vscode/
+
+# Python virtual environment
+.venv/
+venv/
+env/
+
+# OS-specific files
+.DS_Store
+Thumbs.db

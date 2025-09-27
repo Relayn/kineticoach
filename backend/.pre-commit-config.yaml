@@ -1,0 +1,48 @@
+repos:
+  # --- Базовые проверки ---
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: trailing-whitespace # Удаляет лишние пробелы в конце строк
+      - id: end-of-file-fixer   # Гарантирует, что файл заканчивается пустой строкой
+      - id: check-yaml          # Проверяет синтаксис YAML файлов
+      - id: check-toml          # Проверяет синтаксис TOML файлов
+      - id: check-merge-conflict # Предотвращает коммит маркеров конфликтов слияния
+
+  # --- Форматирование и Линтинг ---
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.5.0
+    hooks:
+      - id: ruff
+        args: [--fix, --exit-non-zero-on-fix] # Автоматически исправляет ошибки
+      - id: ruff-format # Форматирует код в стиле Black
+
+  # --- Проверка типов ---
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.10.0
+    hooks:
+      - id: mypy
+        args: [--strict]
+        additional_dependencies: [pydantic] # Даем mypy плагин для Pydantic
+
+  # --- Безопасность (SAST) ---
+  - repo: https://github.com/PyCQA/bandit
+    rev: 1.8.6
+    hooks:
+      - id: bandit
+        # Исключаем тесты из проверки на assert'ы
+        exclude: "tests/"
+
+  # - repo: https://github.com/semgrep/semgrep
+  #   rev: v1.68.0
+  #   hooks:
+  #     - id: semgrep
+  #       args: [--config=auto, --error] # Использует авто-конфигурацию правил
+
+  # --- Обнаружение секретов ---
+  - repo: https://github.com/Yelp/detect-secrets
+    rev: v1.5.0
+    hooks:
+      - id: detect-secrets
+        # Исключаем .env.example, т.к. он содержит шаблоны, а не реальные секреты
+        exclude: \.env\.example$
