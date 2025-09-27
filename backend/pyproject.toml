@@ -46,7 +46,7 @@ requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.bandit]
-# Исключаем директорию с тестами из сканирования bandit
-exclude_dirs = ["tests"]
+# Исключаем директорию с виртуальным окружением из сканирования
+exclude_dirs = [".venv"]
 # Пропускаем проверку B101 (использование assert), т.к. в тестах это нормально
 skips = ["B101"]
