@@ -1,6 +1,6 @@
-"""Placeholder test to ensure the test suite runs."""
+"""Тест-заглушка для проверки работоспособности тестового набора."""
 
 
 def test_ci_pipeline_is_working() -> None:
-    """A simple test that always passes."""
+    """Простой тест, который всегда успешно проходит."""
     assert True

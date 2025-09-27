@@ -3,9 +3,9 @@ name: Backend CI
 
 on:
   push:
-    branches: [ main ]
+    branches: [ master ]
   pull_request:
-    branches: [ main ]
+    branches: [ master ]
     paths:
       - 'backend/**' # Запускать только если изменения в папке backend
 
