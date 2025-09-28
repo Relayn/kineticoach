@@ -43,3 +43,8 @@ build-backend = "poetry.core.masonry.api"
 exclude_dirs = [".venv"]
 # Пропускаем проверку B101 (использование assert), т.к. в тестах это нормально
 skips = ["B101"]
+
+[tool.pytest.ini_options]
+# Указываем pytest, где именно искать тесты, чтобы он не запускал
+# вспомогательные скрипты из других директорий (например, tools/).
+testpaths = ["tests"]
