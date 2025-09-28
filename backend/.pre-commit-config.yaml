@@ -22,8 +22,10 @@ repos:
     rev: v1.10.0
     hooks:
       - id: mypy
-        args: [--strict]
-        additional_dependencies: [pydantic] # Даем mypy плагин для Pydantic
+        args: [ --strict ]
+        additional_dependencies:
+          - pydantic
+          - fastapi
 
   # --- Безопасность (SAST) ---
   - repo: https://github.com/PyCQA/bandit
