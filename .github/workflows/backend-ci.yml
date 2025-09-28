@@ -49,7 +49,7 @@ jobs:
           poetry run ruff format --check .
 
       - name: 7. Run static type checker
-        run: poetry run mypy .
+        run: poetry run mypy src tests
 
       - name: 8. Run security scanner
         run: poetry run bandit -c pyproject.toml -r src tests
