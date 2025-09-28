@@ -34,13 +34,6 @@ target-version = "py311"
 select = ["E", "W", "F", "I", "C90", "B"] # Стандартный набор + flake8-bugbear
 ignore = []
 
-[tool.mypy]
-python_version = "3.11"
-warn_return_any = true
-warn_unused_configs = true
-ignore_missing_imports = true # Начнем с этого, чтобы не блокировать разработку
-strict = true
-
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"

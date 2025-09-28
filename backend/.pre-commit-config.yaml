@@ -22,10 +22,11 @@ repos:
     rev: v1.10.0
     hooks:
       - id: mypy
-        args: [ --strict ]
+        args: [--strict, --config-file=backend/mypy.ini]
         additional_dependencies:
           - pydantic
           - fastapi
+          - websockets
 
   # --- Безопасность (SAST) ---
   - repo: https://github.com/PyCQA/bandit
