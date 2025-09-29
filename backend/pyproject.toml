@@ -13,6 +13,9 @@ uvicorn = {extras = ["standard"], version = "^0.30.1"}
 websockets = "^12.0"
 pydantic = "^2.7.1"
 pydantic-settings = "^2.2.1"
+mediapipe = "0.10.11"
+opencv-python-headless = "*"
+protobuf = "3.20.3"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.2.2"
