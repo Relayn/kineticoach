@@ -41,6 +41,9 @@ COPY src/ .
 # Меняем владельца всех файлов на нашего непривилегированного пользователя
 RUN chown -R appuser:appgroup /app
 
+# Указываем matplotlib использовать временную папку для кэша
+ENV MPLCONFIGDIR=/tmp/matplotlib
+
 # Переключаемся на этого пользователя
 USER appuser
 
