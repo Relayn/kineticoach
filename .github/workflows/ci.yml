@@ -29,6 +29,8 @@ jobs:
 
       - name: 3. Install Poetry
         uses: snok/install-poetry@v1
+        with:
+          virtualenvs-in-project: true
 
       - name: 4. Load cached venv
         id: cached-poetry-dependencies
@@ -39,7 +41,7 @@ jobs:
 
       - name: 5. Install dependencies
         if: steps.cached-poetry-dependencies.outputs.cache-hit != 'true'
-        run: poetry install --no-interaction --no-root
+        run: poetry install --no-interaction
 
       - name: 6. Run linters and formatters
         run: |
