@@ -21,12 +21,18 @@ VALID_B64_FRAME = create_blank_image_b64(100, 100)
 
 
 class MockLandmark:
-    """Класс-заглушка для имитации объекта NormalizedLandmark."""
+    """
+    Класс-заглушка для имитации объекта NormalizedLandmark из MediaPipe
+    в целях тестирования.
+    """
 
-    def __init__(self, x: float, y: float, z: float = 0.0) -> None:
+    def __init__(
+        self, x: float, y: float, z: float = 0.0, visibility: float = 1.0
+    ) -> None:
         self.x = x
         self.y = y
         self.z = z
+        self.visibility = visibility
 
 
 # --- Тестовые данные: имитация координат для разных поз ---
