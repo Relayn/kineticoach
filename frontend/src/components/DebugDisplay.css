@@ -1,0 +1,48 @@
+.debug-container {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  background-color: rgba(0, 0, 0, 0.6);
+  color: white;
+  padding: 10px;
+  border-radius: 8px;
+  font-family: "Courier New", Courier, monospace;
+  font-size: 0.9rem;
+  text-align: left;
+  z-index: 10;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.debug-item {
+  display: flex;
+  justify-content: space-between;
+  min-width: 200px;
+}
+
+.debug-item:not(:last-child) {
+  margin-bottom: 5px;
+}
+
+.debug-label {
+  color: #a0a0a0;
+  margin-right: 10px;
+}
+
+.debug-value {
+  font-weight: bold;
+}
+
+.state-value {
+  color: #ffc107; /* Amber color for state */
+}```
+
+**3. Интегрируйте `DebugDisplay` в `App.tsx`:**
+
+### 📝 Pinpoint edit in file: frontend/src/App.tsx
+
+Внутри функции `App`, найдите импорты и добавьте импорт нового компонента:
+```typescript
+import { useEffect, useRef, useState } from "react";
+import "./App.css";
+import FeedbackDisplay from "./components/FeedbackDisplay";
+import DebugDisplay from "./components/DebugDisplay"; // <-- ДОБАВИТЬ ЭТУ СТРОКУ

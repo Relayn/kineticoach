@@ -1,23 +1,36 @@
 import { useEffect, useRef, useState } from "react";
 import "./App.css";
+import FeedbackDisplay from "./components/FeedbackDisplay";
+import DebugDisplay from "./components/DebugDisplay";
 
-// Частота отправки кадров на сервер (в миллисекундах)
 const FRAME_INTERVAL_MS = 100;
+
+// Определяем тип для данных, приходящих от сервера
+interface ServerFeedback {
+  rep_count: number;
+  feedback: string[];
+  state: string;
+  has_landmarks: boolean;
+  debug_data?: { // Добавляем опциональное поле
+    knee_angle?: number;
+    hip_angle?: number;
+  };
+}
 
 function App() {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const wsRef = useRef<WebSocket | null>(null);
-  const intervalRef = useRef<number | null>(null);
 
   const [error, setError] = useState<string | null>(null);
   const [isConnected, setIsConnected] = useState(false);
+  const [feedbackData, setFeedbackData] = useState<ServerFeedback | null>(null);
 
   useEffect(() => {
     const setupCameraAndWebSocket = async () => {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({
-          video: { width: 640, height: 480 }, // Задаем разрешение
+          video: { width: 640, height: 480 },
           audio: false,
         });
         if (videoRef.current) {
@@ -29,7 +42,6 @@ function App() {
         return;
       }
 
-      // Устанавливаем WebSocket соединение
       const wsUrl = import.meta.env.VITE_WS_URL;
       if (!wsUrl) {
         setError("URL для WebSocket не определен.");
@@ -55,28 +67,23 @@ function App() {
       };
 
       ws.onmessage = (event) => {
-        // Здесь мы будем обрабатывать сообщения от сервера
         const message = JSON.parse(event.data);
-        console.log("Получено сообщение от сервера:", message);
+        if (message.type === "FEEDBACK") {
+          setFeedbackData(message.payload);
+        }
       };
     };
 
     setupCameraAndWebSocket();
 
-    // Функция очистки при размонтировании компонента
     return () => {
       if (wsRef.current) {
         wsRef.current.close();
       }
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-      }
     };
   }, []);
 
-  // Эффект для управления отправкой кадров
   useEffect(() => {
-    // Если соединение не установлено или нет элементов, ничего не делаем
     if (!isConnected || !videoRef.current || !canvasRef.current) {
       return;
     }
@@ -99,14 +106,20 @@ function App() {
         wsRef.current.send(JSON.stringify(message));
       }
     }, FRAME_INTERVAL_MS);
+
     return () => {
       clearInterval(intervalId);
     };
-  }, [isConnected]); // Эффект перезапускается при изменении isConnected
+  }, [isConnected]);
 
   return (
     <div className="app-container">
-      <h1>KinetiCoach</h1>
+      <div className="header">
+        <h1>KinetiCoach</h1>
+        <div className="status">
+          {isConnected ? "✅ Соединено" : "❌ Нет соединения"}
+        </div>
+      </div>
       <div className="video-wrapper">
         {error && <div className="error-message">{error}</div>}
         <video
@@ -116,11 +129,17 @@ function App() {
           muted
           className="video-feed"
         />
-        {/* Скрытый canvas для захвата кадров */}
         <canvas ref={canvasRef} style={{ display: "none" }} />
+        <DebugDisplay
+          state={feedbackData?.state ?? "N/A"}
+          debugData={feedbackData?.debug_data ?? {}}
+        />
       </div>
-      <div className="status">
-        Соединение с сервером: {isConnected ? "✅" : "❌"}
+      <div className="controls">
+        <FeedbackDisplay
+          repCount={feedbackData?.rep_count ?? 0}
+          feedback={feedbackData?.feedback ?? []}
+        />
       </div>
     </div>
   );

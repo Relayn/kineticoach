@@ -35,6 +35,7 @@ class PoseAnalyzer:
         self.state: str = "UP"
         self.min_knee_angle: float = 180.0
         self.feedback: List[str] = []
+        self.debug_data: Dict[str, float] = {}  # Словарь для отладочных данных
         logger.info("Экземпляр PoseAnalyzer создан и инициализирован.")
 
     def _decode_frame(self, base64_str: str) -> NDArrayU8 | None:
@@ -97,8 +98,21 @@ class PoseAnalyzer:
         knee = landmarks[LEFT_KNEE]
         ankle = landmarks[LEFT_ANKLE]
 
+        # --- Проверка видимости ключевых точек ---
+        # Если мы не уверены в положении ног и таза, пропускаем анализ кадра.
+        if (
+            hip.visibility < rules.MIN_VISIBILITY_THRESHOLD
+            or knee.visibility < rules.MIN_VISIBILITY_THRESHOLD
+            or ankle.visibility < rules.MIN_VISIBILITY_THRESHOLD
+        ):
+            self.debug_data = {}  # Очищаем отладочные данные, если поза невалидна
+            return
+
         knee_angle = calculate_angle(hip, knee, ankle)
         hip_angle = calculate_angle(shoulder, hip, knee)
+
+        # Сохраняем вычисленные углы для отладки
+        self.debug_data = {"knee_angle": knee_angle, "hip_angle": hip_angle}
 
         if self.state == "UP":
             self._handle_state_up(knee_angle, hip_angle)
@@ -126,11 +140,14 @@ class PoseAnalyzer:
             self._analyze_pose(landmarks)
             if state_before_analysis == "DOWN" and self.state == "UP":
                 feedback_to_send = self.feedback
+        else:
+            self.debug_data = {}  # Очищаем данные, если человек не найден
 
         payload = {
             "rep_count": self.rep_counter,
             "has_landmarks": has_landmarks,
             "feedback": feedback_to_send,
             "state": self.state,
+            "debug_data": self.debug_data,  # Добавляем отладочные данные
         }
         return ServerMessage(type="FEEDBACK", payload=payload)

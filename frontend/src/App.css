@@ -15,8 +15,19 @@
   width: 100%;
 }
 
-h1 {
-  flex-shrink: 0; /* Заголовок не будет сжиматься */
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  flex-shrink: 0;
+}
+
+.status {
+  font-size: 1rem;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  background-color: rgba(255, 255, 255, 0.1);
 }
 
 .video-wrapper {
@@ -33,7 +44,7 @@ h1 {
 .video-feed {
   width: 100%;
   height: 100%;
-  object-fit: cover; /* Видео будет покрывать всю область, сохраняя пропорции */
+  object-fit: contain; /* Видео будет полностью вписано в область, возможны пустые поля */
 }
 
 .error-message {
