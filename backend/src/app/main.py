@@ -46,10 +46,15 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
                 logger.info(f"Получено валидное сообщение: {client_msg.type}")
 
                 if client_msg.type == "POSE_DATA":
-                    # Передаем данные в анализатор и получаем ответ
-                    response_msg = analyzer.process_data(client_msg.payload)
+                    response_msg = analyzer.process_frame(client_msg.payload)
+                elif client_msg.type == "END_SESSION":
+                    logger.info(
+                        "Получен запрос на завершение сессии. Генерация отчета."
+                    )
+                    response_msg = analyzer.generate_report()
+                    await websocket.send_json(response_msg.model_dump())
+                    break  # Выходим из цикла и закрываем соединение
                 else:
-                    # Обрабатываем другие типы сообщений, если они появятся
                     response_payload = {
                         "status": "processed",
                         "original_type": client_msg.type,

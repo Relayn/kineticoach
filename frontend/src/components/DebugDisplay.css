@@ -11,16 +11,20 @@
   text-align: left;
   z-index: 10;
   border: 1px solid rgba(255, 255, 255, 0.2);
+  display: flex;
+  gap: 20px; /* Расстояние между блоками */
+}
+
+.debug-group {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
 }
 
 .debug-item {
   display: flex;
   justify-content: space-between;
   min-width: 200px;
-}
-
-.debug-item:not(:last-child) {
-  margin-bottom: 5px;
 }
 
 .debug-label {
@@ -33,16 +37,9 @@
 }
 
 .state-value {
-  color: #ffc107; /* Amber color for state */
-}```
+  color: #ffc107; /* Amber */
+}
 
-**3. Интегрируйте `DebugDisplay` в `App.tsx`:**
-
-### 📝 Pinpoint edit in file: frontend/src/App.tsx
-
-Внутри функции `App`, найдите импорты и добавьте импорт нового компонента:
-```typescript
-import { useEffect, useRef, useState } from "react";
-import "./App.css";
-import FeedbackDisplay from "./components/FeedbackDisplay";
-import DebugDisplay from "./components/DebugDisplay"; // <-- ДОБАВИТЬ ЭТУ СТРОКУ
+.threshold-value {
+  color: #f44336; /* Red */
+}
