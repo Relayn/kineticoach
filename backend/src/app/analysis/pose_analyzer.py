@@ -36,7 +36,6 @@ class PoseAnalyzer:
         self.max_hip_angle_at_top: float = 0.0
         self.feedback: List[str] = []
         self.debug_data: Dict[str, float] = {}
-        # Новая структура для сбора статистики
         self.stats: Dict[str, int] = defaultdict(int)
         logger.info("Экземпляр PoseAnalyzer создан и инициализирован.")
 
@@ -53,7 +52,6 @@ class PoseAnalyzer:
             return None
 
     def _update_stats(self) -> None:
-        """Обновляет статистику на основе фидбэка за последнее повторение."""
         if not self.feedback:
             return
         if "GOOD_REP" in self.feedback:
@@ -65,17 +63,14 @@ class PoseAnalyzer:
     def _check_errors_down_phase(
         self, hip_angle: float, knee_x: float, ankle_x: float, shoulder_width: float
     ) -> None:
-        """Проверяет ошибки, характерные для фазы опускания."""
         if hip_angle < rules.BODY_BEND_FORWARD_THRESHOLD:
             if "BEND_FORWARD" not in self.feedback:
                 self.feedback.append("BEND_FORWARD")
-
         if abs(knee_x - ankle_x) > (shoulder_width * rules.KNEE_OVER_TOE_THRESHOLD):
             if "KNEE_OVER_TOE" not in self.feedback:
                 self.feedback.append("KNEE_OVER_TOE")
 
     def _check_errors_up_phase(self) -> None:
-        """Проверяет ошибки по результатам всего повторения."""
         if self.min_knee_angle > rules.SQUAT_DEPTH_GOOD_MAX:
             self.feedback.append("LOWER_YOUR_HIPS")
         if self.min_knee_angle < rules.SQUAT_DEPTH_GOOD_MIN:
@@ -83,35 +78,11 @@ class PoseAnalyzer:
         if self.max_hip_angle_at_top > rules.BODY_BEND_BACKWARDS_THRESHOLD:
             self.feedback.append("BEND_BACKWARDS")
 
-    def _handle_state_up(self, knee_angle: float, hip_angle: float) -> None:
-        self.max_hip_angle_at_top = max(self.max_hip_angle_at_top, hip_angle)
-        if knee_angle < rules.REP_TRANSITION_ANGLE:
-            self.state = "DOWN"
-            self.min_knee_angle = knee_angle
-            self.feedback = []
-
-    def _handle_state_down(
-        self,
-        knee_angle: float,
-        hip_angle: float,
-        knee_x: float,
-        ankle_x: float,
-        shoulder_width: float,
-    ) -> None:
-        if knee_angle > rules.REP_TRANSITION_ANGLE:
-            self.state = "UP"
-            self.rep_counter += 1
-            self._check_errors_up_phase()
-            if not self.feedback:
-                self.feedback.append("GOOD_REP")
-            self._update_stats()  # Обновляем статистику после каждого повторения
-            logger.info(f"Повторение {self.rep_counter} завершено: {self.feedback}")
-            self.max_hip_angle_at_top = 0.0
-        else:
-            self.min_knee_angle = min(self.min_knee_angle, knee_angle)
-            self._check_errors_down_phase(hip_angle, knee_x, ankle_x, shoulder_width)
-
     def _analyze_pose(self, landmarks: Landmarks) -> None:
+        """
+        Основной метод анализа, реализующий логику конечного автомата
+        с "проваливанием" (fall-through).
+        """
         (
             LEFT_SHOULDER,
             RIGHT_SHOULDER,
@@ -135,25 +106,43 @@ class PoseAnalyzer:
         knee_angle = calculate_angle(hip, knee, ankle)
         hip_angle = calculate_angle(shoulder_l, hip, knee)
         shoulder_width = abs(shoulder_l.x - shoulder_r.x)
-        knee_foot_diff = knee.x - foot.x
-        knee_threshold = shoulder_width * rules.KNEE_OVER_TOE_THRESHOLD
 
         self.debug_data = {
             "knee_angle": knee_angle,
             "hip_angle": hip_angle,
-            "knee_foot_diff": knee_foot_diff,
-            "knee_threshold": knee_threshold,
+            "knee_foot_diff": knee.x - foot.x,
+            "knee_threshold": shoulder_width * rules.KNEE_OVER_TOE_THRESHOLD,
         }
 
+        # --- Логика конечного автомата ---
+
         if self.state == "UP":
-            self._handle_state_up(knee_angle, hip_angle)
-        elif self.state == "DOWN":
-            self._handle_state_down(
-                knee_angle, hip_angle, knee.x, foot.x, shoulder_width
-            )
+            self.max_hip_angle_at_top = max(self.max_hip_angle_at_top, hip_angle)
+            if knee_angle < rules.REP_TRANSITION_ANGLE:
+                # НАЧАЛО ПОВТОРЕНИЯ: Переход UP -> DOWN
+                self.state = "DOWN"
+                self.min_knee_angle = knee_angle
+                self.feedback = []
+                # Важно: после смены состояния, этот же кадр СРАЗУ обрабатывается
+                # как кадр в состоянии DOWN (логика "проваливания").
+
+        if self.state == "DOWN":
+            # ОБРАБОТКА ФАЗЫ ПРИСЕДА
+            self.min_knee_angle = min(self.min_knee_angle, knee_angle)
+            self._check_errors_down_phase(hip_angle, knee.x, foot.x, shoulder_width)
+
+            if knee_angle > rules.REP_TRANSITION_ANGLE:
+                # ЗАВЕРШЕНИЕ ПОВТОРЕНИЯ: Переход DOWN -> UP
+                self.state = "UP"
+                self.rep_counter += 1
+                self._check_errors_up_phase()
+                if not self.feedback:
+                    self.feedback.append("GOOD_REP")
+                self._update_stats()
+                logger.info(f"Повторение {self.rep_counter} завершено: {self.feedback}")
+                self.max_hip_angle_at_top = 0.0
 
     def generate_report(self) -> ServerMessage:
-        """Генерирует итоговый отчет по сессии."""
         report_payload = {
             "total_reps": self.rep_counter,
             "good_reps": self.stats["good_reps"],
@@ -164,7 +153,6 @@ class PoseAnalyzer:
         return ServerMessage(type="REPORT", payload=report_payload)
 
     def process_frame(self, data: Dict[str, Any]) -> ServerMessage:
-        """Обрабатывает один кадр и возвращает текущее состояние."""
         frame_b64 = data.get("frame")
         if not frame_b64 or not isinstance(frame_b64, str):
             return ServerMessage(type="ERROR", payload={"message": "Frame is missing."})
