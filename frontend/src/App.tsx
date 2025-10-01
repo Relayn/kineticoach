@@ -152,10 +152,12 @@ function App() {
           state={feedbackData?.state ?? "N/A"}
           debugData={feedbackData?.debug_data ?? {}}
         />
-        <SkeletonCanvas
-          landmarks={feedbackData?.landmarks ?? []}
-          videoRef={videoRef}
-        />
+        {videoRef.current && (
+          <SkeletonCanvas
+            landmarks={feedbackData?.landmarks ?? []}
+            videoRef={videoRef as React.RefObject<HTMLVideoElement>}
+          />
+        )}
       </div>
       <div className="controls">
         <div className="source-switcher">

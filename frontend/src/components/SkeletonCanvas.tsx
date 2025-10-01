@@ -21,8 +21,10 @@ function SkeletonCanvas({ landmarks, videoRef }: SkeletonCanvasProps) {
     const video = videoRef.current;
     const ctx = canvas?.getContext("2d");
 
-    if (!canvas || !video || !ctx || video.videoWidth === 0) {
-      ctx?.clearRect(0, 0, canvas.width, canvas.height);
+     if (!canvas || !video || !ctx || video.videoWidth === 0) {
+      if (canvas) { // Добавляем проверку перед доступом
+        ctx?.clearRect(0, 0, canvas.width, canvas.height);
+      }
       return;
     }
 
