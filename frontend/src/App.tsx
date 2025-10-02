@@ -3,6 +3,7 @@ import "./App.css";
 import FeedbackDisplay from "./components/FeedbackDisplay";
 import DebugDisplay from "./components/DebugDisplay";
 import SkeletonCanvas from "./components/SkeletonCanvas";
+import ReportModal from "./components/ReportModal"; // Импортируем новый компонент
 
 const FRAME_INTERVAL_MS = 100;
 
@@ -29,6 +30,13 @@ interface ServerFeedback {
   landmarks?: Landmark[];
 }
 
+// Тип для данных отчета
+interface ReportData {
+  total_reps: number;
+  good_reps: number;
+  errors: Record<string, number>;
+}
+
 type VideoSource = "camera" | "file";
 
 function App() {
@@ -42,6 +50,7 @@ function App() {
   const [feedbackData, setFeedbackData] = useState<ServerFeedback | null>(null);
   const [videoSource, setVideoSource] = useState<VideoSource>("camera");
   const [videoFileUrl, setVideoFileUrl] = useState<string | null>(null);
+  const [reportData, setReportData] = useState<ReportData | null>(null); // Состояние для отчета
 
   // --- Эффект для управления источником видео ---
   useEffect(() => {
@@ -88,6 +97,8 @@ function App() {
       const message = JSON.parse(event.data);
       if (message.type === "FEEDBACK") {
         setFeedbackData(message.payload);
+      } else if (message.type === "REPORT") {
+        setReportData(message.payload); // Сохраняем данные отчета
       }
     };
 
@@ -124,6 +135,12 @@ function App() {
       const url = URL.createObjectURL(file);
       setVideoFileUrl(url);
       setVideoSource("file");
+    }
+  };
+
+  const handleFinishSession = () => {
+    if (wsRef.current?.readyState === WebSocket.OPEN) {
+      wsRef.current.send(JSON.stringify({ type: "END_SESSION", payload: {} }));
     }
   };
 
@@ -167,6 +184,9 @@ function App() {
           <button onClick={() => fileInputRef.current?.click()} disabled={videoSource === "file"}>
             Видеофайл
           </button>
+          <button onClick={handleFinishSession}>
+            Завершить
+          </button>
           <input
             type="file"
             ref={fileInputRef}
@@ -180,6 +200,7 @@ function App() {
           feedback={feedbackData?.feedback ?? []}
         />
       </div>
+      <ReportModal reportData={reportData} onClose={() => setReportData(null)} />
     </div>
   );
 }

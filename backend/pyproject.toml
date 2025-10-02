@@ -14,7 +14,7 @@ websockets = "^12.0"
 pydantic = "^2.7.1"
 pydantic-settings = "^2.2.1"
 mediapipe = "0.10.11"
-opencv-python-headless = "*"
+opencv-python-headless = "4.10.0.84"
 protobuf = "3.20.3"
 
 [tool.poetry.group.dev.dependencies]
