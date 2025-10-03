@@ -5,10 +5,18 @@ services:
       dockerfile: Dockerfile
     ports:
       - "8000:8000"
-    volumes:
-      # Синхронизирует исходный код для live-reloading
-      - ./backend/src:/app
     env_file:
       # Передает переменные окружения из .env файла
       - ./backend/.env
-    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        # Передаем URL бэкенда, доступный из браузера на хост-машине
+        - VITE_WS_URL_ARG=ws://localhost:8000/ws/analysis
+    ports:
+      - "5173:80"
+    depends_on:
+      - backend

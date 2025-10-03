@@ -1,55 +1,55 @@
-# backend/Dockerfile
-
-# --- Этап 1: Builder ---
-# На этом этапе мы устанавливаем все зависимости, включая dev, с помощью Poetry.
+# ======================
+# 1. Этап: builder
+# ======================
 FROM python:3.11-slim AS builder
 
-# Устанавливаем рабочую директорию
-WORKDIR /app
-
 # Устанавливаем Poetry
-RUN pip install poetry
+ENV POETRY_VERSION=2.2.1
+RUN pip install --no-cache-dir poetry=="$POETRY_VERSION"
 
-# Конфигурируем Poetry, чтобы он не создавал виртуальное окружение внутри проекта
+# Говорим Poetry не создавать venv, а ставить пакеты в глобальный site-packages
 RUN poetry config virtualenvs.create false
 
-# Копируем файлы зависимостей и устанавливаем их.
-# Этот слой будет кэшироваться Docker, если файлы не изменятся.
+WORKDIR /app
+
+# Копируем только файлы зависимостей для кэширования этого слоя
 COPY pyproject.toml poetry.lock ./
+
+# Устанавливаем только production-зависимости.
+# Poetry автоматически использует CPU-источник для torch.
 RUN poetry install --no-interaction --no-root --only main
 
-# --- Этап 2: Runtime ---
-# На этом этапе мы создаем чистый образ только с необходимыми для запуска зависимостями.
+# ======================
+# 2. Этап: runtime
+# ======================
 FROM python:3.11-slim AS runtime
 
-# Устанавливаем рабочую директорию и добавляем ее в PYTHONPATH
+# Устанавливаем системные зависимости, необходимые для OpenCV
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libgl1 \
+    libglib2.0-0 \
+    && rm -rf /var/lib/apt/lists/*
+
 WORKDIR /app
-ENV PYTHONPATH=/app
 
-# Создаем пользователя с ограниченными правами для запуска приложения
-RUN groupadd --system --gid 1001 appgroup && \
-    useradd --system --uid 1001 --gid 1001 appuser
-
-# Копируем установленные зависимости из этапа "builder"
+# Копируем установленные Python-пакеты из builder-а
 COPY --from=builder /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
 COPY --from=builder /usr/local/bin /usr/local/bin
 
-# Копируем исходный код нашего приложения
-# Теперь мы копируем содержимое папки src в корень /app
-COPY src/ .
+# Копируем исходный код
+COPY src/ ./src
 
-# Меняем владельца всех файлов на нашего непривилегированного пользователя
-RUN chown -R appuser:appgroup /app
+# Указываем Python, где искать наши модули
+ENV PYTHONPATH=/app/src
 
-# Указываем matplotlib использовать временную папку для кэша
-ENV MPLCONFIGDIR=/tmp/matplotlib
+# Устанавливаем переменную окружения для matplotlib
+ENV MPLCONFIGDIR=/tmp
 
-# Переключаемся на этого пользователя
+# Создаем и переключаемся на непривилегированного пользователя
+RUN groupadd --system --gid 1001 appgroup && \
+    useradd --system --uid 1001 --gid 1001 appuser && \
+    chown -R appuser:appgroup /app
 USER appuser
 
-# Открываем порт, на котором будет работать Uvicorn
-EXPOSE 8000
-
-# Команда для запуска приложения
-# Теперь Python сможет найти модуль 'app'
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Запуск FastAPI
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--ws", "wsproto"]

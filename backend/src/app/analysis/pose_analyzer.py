@@ -61,12 +61,13 @@ class PoseAnalyzer:
                 self.stats[error] += 1
 
     def _check_errors_down_phase(
-        self, hip_angle: float, knee_x: float, ankle_x: float, shoulder_width: float
+        self, hip_angle: float, knee_x: float, foot_x: float, shoulder_width: float
     ) -> None:
         if hip_angle < rules.BODY_BEND_FORWARD_THRESHOLD:
             if "BEND_FORWARD" not in self.feedback:
                 self.feedback.append("BEND_FORWARD")
-        if abs(knee_x - ankle_x) > (shoulder_width * rules.KNEE_OVER_TOE_THRESHOLD):
+        # Сравниваем смещение колена относительно носка
+        if abs(knee_x - foot_x) > (shoulder_width * rules.KNEE_OVER_TOE_THRESHOLD):
             if "KNEE_OVER_TOE" not in self.feedback:
                 self.feedback.append("KNEE_OVER_TOE")
 

@@ -6,6 +6,11 @@ authors = ["Alex <alex@example.com>"]
 readme = "README.md"
 packages = [{include = "app", from = "src"}]
 
+[[tool.poetry.source]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+priority = "explicit"
+
 [tool.poetry.dependencies]
 python = "^3.11"
 fastapi = "^0.117.1"
@@ -14,8 +19,11 @@ websockets = "^12.0"
 pydantic = "^2.7.1"
 pydantic-settings = "^2.2.1"
 mediapipe = "0.10.11"
-opencv-python-headless = "*"
+opencv-python-headless = "4.10.0.84"
 protobuf = "3.20.3"
+wsproto = "^1.2.0"
+torch = { version = "^2.8.0", source = "pytorch-cpu" }
+
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.2.2"
