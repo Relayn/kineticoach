@@ -5,6 +5,7 @@
 Использует новый API MediaPipe Tasks.
 """
 
+import os
 from typing import List, Optional, TypeAlias
 
 import cv2
@@ -15,8 +16,10 @@ from mediapipe.tasks import python
 from mediapipe.tasks.python import vision
 from numpy.typing import NDArray
 
-# Определяем путь к модели.
-MODEL_PATH = "pose_landmarker_lite.task"
+# Определяем путь к модели относительно текущего файла.
+# Это делает код независимым от того, откуда он запускается.
+_MODEL_DIR = os.path.dirname(__file__)
+MODEL_PATH = os.path.join(_MODEL_DIR, "pose_landmarker_lite.task")
 
 # Создаем псевдоним типа для наглядности: массив NumPy с 8-битными целыми числами
 # Явно указываем, что это TypeAlias для mypy в строгом режиме.
