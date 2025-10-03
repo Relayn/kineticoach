@@ -49,7 +49,7 @@
 - [x] **Backend:** Расширить тесты для `pose_analyzer.py` для покрытия всех правил и пограничных случаев (например, невидимые точки, резкие смены состояния).
 - [x] **Backend:** Написать тесты для `pose_processor.py`, используя моки для имитации ответов MediaPipe.
 - [x] **Backend:** Написать интеграционные тесты для WebSocket-эндпоинта в `main.py` для проверки корректной обработки разных типов сообщений.
-- [ ] **Frontend:** Написать компонентные тесты (`Jest` + `React Testing Library`) для `ReportModal`, `FeedbackDisplay` и `DebugDisplay`, проверяя их отрисовку с разными входными данными (props).
+- [x] **Frontend:** Написать компонентные тесты (`Jest` + `React Testing Library`) для `ReportModal`, `FeedbackDisplay` и `DebugDisplay`, проверяя их отрисовку с разными входными данными (props).
 
 ## Эпик: Frontend-разработка (Mini App)
 *   **Критерии Приемки:**
