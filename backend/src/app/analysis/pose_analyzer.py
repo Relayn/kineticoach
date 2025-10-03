@@ -33,7 +33,6 @@ class PoseAnalyzer:
         self.rep_counter: int = 0
         self.state: str = "UP"
         self.min_knee_angle: float = 180.0
-        self.max_hip_angle_at_top: float = 0.0
         self.feedback: List[str] = []
         self.debug_data: Dict[str, float] = {}
         self.stats: Dict[str, int] = defaultdict(int)
@@ -71,12 +70,12 @@ class PoseAnalyzer:
             if "KNEE_OVER_TOE" not in self.feedback:
                 self.feedback.append("KNEE_OVER_TOE")
 
-    def _check_errors_up_phase(self) -> None:
+    def _check_errors_up_phase(self, hip_angle_at_top: float) -> None:
         if self.min_knee_angle > rules.SQUAT_DEPTH_GOOD_MAX:
             self.feedback.append("LOWER_YOUR_HIPS")
         if self.min_knee_angle < rules.SQUAT_DEPTH_GOOD_MIN:
             self.feedback.append("SQUAT_TOO_DEEP")
-        if self.max_hip_angle_at_top > rules.BODY_BEND_BACKWARDS_THRESHOLD:
+        if hip_angle_at_top > rules.BODY_BEND_BACKWARDS_THRESHOLD:
             self.feedback.append("BEND_BACKWARDS")
 
     def _analyze_pose(self, landmarks: Landmarks) -> None:
@@ -118,7 +117,6 @@ class PoseAnalyzer:
         # --- Логика конечного автомата ---
 
         if self.state == "UP":
-            self.max_hip_angle_at_top = max(self.max_hip_angle_at_top, hip_angle)
             if knee_angle < rules.REP_TRANSITION_ANGLE:
                 # НАЧАЛО ПОВТОРЕНИЯ: Переход UP -> DOWN
                 self.state = "DOWN"
@@ -136,12 +134,11 @@ class PoseAnalyzer:
                 # ЗАВЕРШЕНИЕ ПОВТОРЕНИЯ: Переход DOWN -> UP
                 self.state = "UP"
                 self.rep_counter += 1
-                self._check_errors_up_phase()
+                self._check_errors_up_phase(hip_angle)
                 if not self.feedback:
                     self.feedback.append("GOOD_REP")
                 self._update_stats()
                 logger.info(f"Повторение {self.rep_counter} завершено: {self.feedback}")
-                self.max_hip_angle_at_top = 0.0
 
     def generate_report(self) -> ServerMessage:
         report_payload = {
