@@ -18,7 +18,7 @@ def create_blank_image_b64(width: int, height: int) -> str:
     # Кодируем в JPEG формат
     _, buffer = cv2.imencode(".jpg", frame)
     # Кодируем в base64
-    b64_string = base64.b64encode(buffer).decode("utf-8")
+    b64_string = base64.b64encode(buffer.tobytes()).decode("utf-8")
     return b64_string
 
 
