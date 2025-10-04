@@ -3,10 +3,11 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    ports:
-      - "8000:8000"
+    # Порт больше не нужно пробрасывать наружу,
+    # т.к. Nginx будет общаться с ним внутри Docker-сети.
+    # ports:
+    #   - "8013:8000"
     env_file:
-      # Передает переменные окружения из .env файла
       - ./backend/.env
 
   frontend:
@@ -14,9 +15,11 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
       args:
-        # Передаем URL бэкенда, доступный из браузера на хост-машине
-        - VITE_WS_URL_ARG=ws://localhost:8000/ws/analysis
+        # Теперь WebSocket-клиент подключается к тому же домену,
+        # что и само приложение, т.к. Nginx будет проксировать запрос.
+        - VITE_WS_URL_ARG=wss://ddf7b09d269a.ngrok-free.app/ws/analysis
     ports:
+      # Мы пробрасываем только порт Nginx (frontend)
       - "5173:80"
     depends_on:
       - backend

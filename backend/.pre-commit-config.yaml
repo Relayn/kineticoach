@@ -25,12 +25,14 @@ repos:
         args: [--strict, --config-file=backend/mypy.ini]
         additional_dependencies:
           - pydantic
+          - pydantic-settings # <-- Вот оно, наше финальное исправление
           - fastapi
           - websockets
           - numpy # Для поддержки типизации NDArray
           - opencv-python-headless # Для поддержки типов cv2
           - mediapipe # Для поддержки типов landmark_pb2
           - pytest # Для поддержки типов декораторов и фикстур
+          - aiogram
 
   # --- Безопасность (SAST) ---
   - repo: https://github.com/PyCQA/bandit
