@@ -16,6 +16,9 @@ class Settings(BaseSettings):
     # Загружает переменные из файла .env
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
 
+    # Переменная для определения, запущено ли приложение в режиме тестирования
+    TESTING_MODE: bool = False
+
     # Токен для Telegram Bot API, полученный от @BotFather
     TELEGRAM_BOT_TOKEN: str = "YOUR_TELEGRAM_BOT_TOKEN_HERE"
 
@@ -27,3 +30,8 @@ class Settings(BaseSettings):
 # Создаем единственный экземпляр настроек,
 # который будет использоваться во всем приложении
 settings = Settings()
+
+# Если приложение запущено в режиме тестирования, подменяем токен на фейковый,
+# но валидный по формату, чтобы aiogram не падал при инициализации.
+if settings.TESTING_MODE:
+    settings.TELEGRAM_BOT_TOKEN = "123456789:AABBCCDDEEFFaabbccddeeff-123456789"  # nosec B105

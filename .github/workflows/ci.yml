@@ -55,6 +55,8 @@ jobs:
 
       - name: 9. Run tests
         run: poetry run pytest
+        env:
+          TESTING_MODE: "True"
 
   frontend-test:
     runs-on: ubuntu-latest
