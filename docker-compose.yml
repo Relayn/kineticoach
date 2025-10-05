@@ -17,7 +17,7 @@ services:
       args:
         # Теперь WebSocket-клиент подключается к тому же домену,
         # что и само приложение, т.к. Nginx будет проксировать запрос.
-        - VITE_WS_URL_ARG=wss://ddf7b09d269a.ngrok-free.app/ws/analysis
+        - VITE_WS_URL_ARG=wss://6599bf8e4b1f.ngrok-free.app/ws/analysis
     ports:
       # Мы пробрасываем только порт Nginx (frontend)
       - "5173:80"
