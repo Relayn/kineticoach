@@ -3,22 +3,43 @@
 Определяет точки входа API и основную конфигурацию.
 """
 
+import asyncio
 import logging
+from contextlib import asynccontextmanager
+from typing import AsyncGenerator
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from pydantic import ValidationError
 
 from .analysis.pose_analyzer import PoseAnalyzer
+from .bot.main import start_bot, stop_bot
 from .schemas import ClientMessage, ServerMessage
 
 # Настраиваем базовый логгер
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+
+@asynccontextmanager
+async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
+    """
+    Контекстный менеджер для управления жизненным циклом приложения.
+    Запускает и останавливает Telegram-бота вместе с FastAPI.
+    """
+    logger.info("FastAPI app starting up...")
+    # Запускаем бота в фоновой задаче
+    bot_task = asyncio.create_task(start_bot())
+    yield  # Приложение работает здесь
+    logger.info("FastAPI app shutting down...")
+    bot_task.cancel()  # Отменяем задачу бота
+    await stop_bot()
+
+
 app = FastAPI(
     title="KinetiCoach API",
     description="API для анализа техники приседаний в реальном времени.",
     version="0.1.0",
+    lifespan=lifespan,
 )
 
 
