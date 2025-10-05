@@ -21,7 +21,7 @@ function SkeletonCanvas({ landmarks, videoRef }: SkeletonCanvasProps) {
     const video = videoRef.current;
     const ctx = canvas?.getContext("2d");
 
-     if (!canvas || !video || !ctx || video.videoWidth === 0) {
+    if (!canvas || !video || !ctx || video.videoWidth === 0) {
       if (canvas) { // Добавляем проверку перед доступом
         ctx?.clearRect(0, 0, canvas.width, canvas.height);
       }
@@ -33,7 +33,11 @@ function SkeletonCanvas({ landmarks, videoRef }: SkeletonCanvasProps) {
     canvas.height = video.clientHeight;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    if (landmarks.length === 0) return;
+    // ЗАЩИТА: Рисуем скелет, только если у нас есть полный набор точек.
+    // MediaPipe Pose возвращает 33 ключевые точки.
+    if (landmarks.length < 33) {
+      return;
+    }
 
     // --- МАТЕМАТИКА ДЛЯ `object-fit: contain` ---
     const videoAspectRatio = video.videoWidth / video.videoHeight;

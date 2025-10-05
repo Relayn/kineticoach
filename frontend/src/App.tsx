@@ -3,9 +3,7 @@ import "./App.css";
 import FeedbackDisplay from "./components/FeedbackDisplay";
 import DebugDisplay from "./components/DebugDisplay";
 import SkeletonCanvas from "./components/SkeletonCanvas";
-import ReportModal from "./components/ReportModal"; // Импортируем новый компонент
-
-const FRAME_INTERVAL_MS = 100;
+import ReportModal from "./components/ReportModal";
 
 // Определяем тип для одной точки
 interface Landmark {
@@ -46,37 +44,59 @@ function App() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [error, setError] = useState<string | null>(null);
-  const [isConnected, setIsConnected] = useState(false);
   const [feedbackData, setFeedbackData] = useState<ServerFeedback | null>(null);
   const [videoSource, setVideoSource] = useState<VideoSource>("camera");
   const [videoFileUrl, setVideoFileUrl] = useState<string | null>(null);
-  const [reportData, setReportData] = useState<ReportData | null>(null); // Состояние для отчета
+  const [reportData, setReportData] = useState<ReportData | null>(null);
 
-  // --- Эффект для управления источником видео ---
+  // --- ЯВНЫЕ ФЛАГИ ГОТОВНОСТИ ---
+  const [isWsReady, setIsWsReady] = useState(false);
+  const [isVideoReady, setIsVideoReady] = useState(false);
+
+  // --- 1. Эффект для управления источником видео ---
   useEffect(() => {
-    const setupCamera = async () => {
-      if (videoSource !== "camera" || !videoRef.current) return;
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: { width: 640, height: 480 },
-          audio: false,
-        });
-        videoRef.current.srcObject = stream;
-        videoRef.current.play(); // Важно для некоторых браузеров
-      } catch (err) {
-        console.error("Ошибка доступа к камере:", err);
-        setError("Не удалось получить доступ к камере.");
+    const video = videoRef.current;
+    if (!video) return;
+
+    const handleVideoReady = () => {
+      if (video.videoWidth > 0) {
+        setIsVideoReady(true);
       }
     };
 
+    const setupCamera = async () => {
+      setIsVideoReady(false);
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { width: 480, height: 360 },
+        });
+        video.srcObject = stream;
+        video.play();
+        setError(null);
+      } catch (err) {
+        console.error("Ошибка доступа к камере:", err);
+        setError("Не удалось получить доступ к камере.");
+        setVideoSource("file");
+      }
+    };
+
+    video.onloadedmetadata = handleVideoReady;
+    video.onplaying = handleVideoReady;
+
     if (videoSource === "camera") {
       setupCamera();
-    } else if (videoSource === "file" && videoRef.current) {
-      videoRef.current.srcObject = null; // Отключаем камеру
+    } else {
+      video.srcObject = null;
+      setIsVideoReady(false);
     }
-  }, [videoSource]);
 
-  // --- Эффект для управления WebSocket ---
+    return () => {
+      video.onloadedmetadata = null;
+      video.onplaying = null;
+    };
+  }, [videoSource, videoFileUrl]);
+
+  // --- 2. Эффект для управления WebSocket ---
   useEffect(() => {
     const wsUrl = import.meta.env.VITE_WS_URL;
     if (!wsUrl) {
@@ -87,47 +107,61 @@ function App() {
     const ws = new WebSocket(wsUrl);
     wsRef.current = ws;
 
-    ws.onopen = () => {
-      setIsConnected(true);
-      setError(null); // Очищаем ошибку при успешном соединении
-    };
-    ws.onclose = () => setIsConnected(false);
+    ws.onopen = () => setIsWsReady(true);
+    ws.onclose = () => setIsWsReady(false);
     ws.onerror = () => setError("Произошла ошибка соединения.");
     ws.onmessage = (event) => {
       const message = JSON.parse(event.data);
       if (message.type === "FEEDBACK") {
         setFeedbackData(message.payload);
       } else if (message.type === "REPORT") {
-        setReportData(message.payload); // Сохраняем данные отчета
+        setReportData(message.payload);
       }
     };
 
     return () => ws.close();
   }, []);
 
-  // --- Эффект для отправки кадров ---
+  // --- 3. Эффект для отправки кадров ---
   useEffect(() => {
-    if (!isConnected || !videoRef.current || !canvasRef.current) return;
+    if (!isWsReady || !isVideoReady) {
+      return;
+    }
 
-    const video = videoRef.current;
-    const canvas = canvasRef.current;
-    const ctx = canvas.getContext("2d");
+    const sendFrame = () => {
+      const video = videoRef.current;
+      const canvas = canvasRef.current;
+      const ws = wsRef.current;
 
-    const intervalId = setInterval(() => {
-      if (ctx && wsRef.current?.readyState === WebSocket.OPEN && !video.paused && video.videoWidth > 0) {
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
-        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-        const frameData = canvas.toDataURL("image/jpeg", 0.7);
-        wsRef.current.send(JSON.stringify({
+      // ГЛАВНОЕ ИСПРАВЛЕНИЕ: Проверяем все здесь
+      if (
+        !video ||
+        !canvas ||
+        !ws ||
+        ws.readyState !== WebSocket.OPEN ||
+        (videoSource === "camera" && video.paused)
+      ) {
+        return;
+      }
+
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return; // Дополнительная проверка для контекста
+
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      ctx.drawImage(video, 0, 0, video.videoWidth, video.videoHeight);
+      const frameData = canvas.toDataURL("image/jpeg", 0.7);
+
+      ws.send(
+        JSON.stringify({
           type: "POSE_DATA",
           payload: { frame: frameData },
-        }));
-      }
-    }, FRAME_INTERVAL_MS);
+        }),
+      );
+    };
 
-    return () => clearInterval(intervalId);
-  }, [isConnected]);
+    sendFrame();
+  }, [isWsReady, isVideoReady, feedbackData, videoSource]);
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -144,6 +178,8 @@ function App() {
     }
   };
 
+  const isConnected = isWsReady && isVideoReady;
+
   return (
     <div className="app-container">
       <div className="header">
@@ -157,7 +193,7 @@ function App() {
         <video
           ref={videoRef}
           src={videoFileUrl ?? undefined}
-          autoPlay={videoSource === "camera"}
+          autoPlay
           playsInline
           muted
           loop={videoSource === "file"}
@@ -178,15 +214,19 @@ function App() {
       </div>
       <div className="controls">
         <div className="source-switcher">
-          <button onClick={() => setVideoSource("camera")} disabled={videoSource === "camera"}>
+          <button
+            onClick={() => setVideoSource("camera")}
+            disabled={videoSource === "camera"}
+          >
             Камера
           </button>
-          <button onClick={() => fileInputRef.current?.click()} disabled={videoSource === "file"}>
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            disabled={videoSource === "file"}
+          >
             Видеофайл
           </button>
-          <button onClick={handleFinishSession}>
-            Завершить
-          </button>
+          <button onClick={handleFinishSession}>Завершить</button>
           <input
             type="file"
             ref={fileInputRef}
@@ -200,7 +240,10 @@ function App() {
           feedback={feedbackData?.feedback ?? []}
         />
       </div>
-      <ReportModal reportData={reportData} onClose={() => setReportData(null)} />
+      <ReportModal
+        reportData={reportData}
+        onClose={() => setReportData(null)}
+      />
     </div>
   );
 }

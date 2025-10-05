@@ -42,6 +42,12 @@ class PoseAnalyzer:
         try:
             if "," in base64_str:
                 base64_str = base64_str.split(",")[1]
+
+            # ЗАЩИТА: Если строка пустая после обработки, выходим
+            if not base64_str:
+                logger.warning("Получена пустая base64 строка после обработки.")
+                return None
+
             img_bytes = base64.b64decode(base64_str)
             img_arr = np.frombuffer(img_bytes, dtype=np.uint8)
             frame = cv2.imdecode(img_arr, cv2.IMREAD_COLOR)

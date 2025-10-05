@@ -52,4 +52,4 @@ RUN groupadd --system --gid 1001 appgroup && \
 USER appuser
 
 # Запуск FastAPI
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--ws", "wsproto"]
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--ws", "wsproto", "--log-level", "info"]
