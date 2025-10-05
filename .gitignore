@@ -13,3 +13,5 @@ Thumbs.db
 
 # Test reports
 frontend/coverage/
+
+ngrok.exe
