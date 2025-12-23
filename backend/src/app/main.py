@@ -6,14 +6,14 @@
 import asyncio
 import logging
 from contextlib import asynccontextmanager
-from typing import AsyncGenerator
+from typing import Any, AsyncGenerator, Optional
 
+from app.analysis.pose_analyzer import PoseAnalyzer
+from app.analysis.poseanalyzer_catcow import CatCowAnalyzer
+from app.analysis.tts import generate_voice_feedback
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
-from pydantic import ValidationError
 
-from .analysis.pose_analyzer import PoseAnalyzer
 from .bot.main import start_bot, stop_bot
-from .schemas import ClientMessage, ServerMessage
 
 # Настраиваем базовый логгер
 logging.basicConfig(level=logging.INFO)
@@ -49,49 +49,124 @@ def health_check() -> dict[str, str]:
     return {"status": "ok"}
 
 
+async def _handle_start_session(
+    websocket: WebSocket, payload: dict[str, Any]
+) -> tuple[Any, Optional[str]]:
+    """Обрабатывает сообщение START_SESSION."""
+    exercise_type = payload.get("exerciseType")
+    analyzer: Any = None
+
+    if exercise_type == "squat":
+        analyzer = PoseAnalyzer()
+        logger.info("Session started: SQUAT")
+    elif exercise_type == "cat-cow":
+        analyzer = CatCowAnalyzer()
+        logger.info("Session started: CAT-COW")
+    else:
+        await websocket.send_json(
+            {
+                "type": "ERROR",
+                "payload": {"message": f"Unknown exercise type: {exercise_type}"},
+            }
+        )
+        return None, None
+
+    # Подтверждение старта сессии
+    await websocket.send_json(
+        {
+            "type": "INFO",
+            "payload": {"message": f"Session started for {exercise_type}"},
+        }
+    )
+    return analyzer, exercise_type
+
+
+async def _handle_pose_data(
+    websocket: WebSocket, analyzer: Any, payload: dict[str, Any]
+) -> None:
+    """Обрабатывает данные о позе."""
+    if not analyzer:
+        await websocket.send_json(
+            {
+                "type": "ERROR",
+                "payload": {
+                    "message": "Session not started. Send START_SESSION first."
+                },
+            }
+        )
+        return
+
+    result = analyzer.process_frame(payload)
+    response_data = result.model_dump()
+
+    # Генерация TTS если есть feedback
+    feedback_codes = response_data.get("payload", {}).get("feedback", [])
+    if feedback_codes:
+        audio_path = await generate_voice_feedback(feedback_codes)
+        if audio_path:
+            # Преобразуем путь к файлу в URL для frontend
+            # TODO: Настроить static file serving или S3
+            response_data["payload"]["audioPath"] = audio_path
+
+    await websocket.send_json(response_data)
+
+
+async def _handle_end_session(
+    websocket: WebSocket, analyzer: Any, exercise_type: Optional[str]
+) -> None:
+    """Завершает сессию и отправляет отчет."""
+    if not analyzer:
+        await websocket.send_json(
+            {
+                "type": "ERROR",
+                "payload": {"message": "No active session to end."},
+            }
+        )
+        return
+
+    report = analyzer.generate_report()
+    await websocket.send_json(report.model_dump())
+    logger.info(f"Session ended for {exercise_type}")
+
+
 @app.websocket("/ws/analysis")
 async def websocket_endpoint(websocket: WebSocket) -> None:
-    """
-    Обрабатывает WebSocket-соединения для анализа движений в реальном времени.
+    """WebSocket endpoint для real-time анализа поз.
+
+    Поддерживает multiple типы упражнений через START_SESSION message.
     """
     await websocket.accept()
-    # Создаем экземпляр анализатора для этой конкретной сессии
-    analyzer = PoseAnalyzer()
-    logger.info("WebSocket-соединение установлено, создан экземпляр PoseAnalyzer.")
+
+    analyzer: Any = None
+    exercise_type: Optional[str] = None
 
     try:
-        while True:
-            data = await websocket.receive_json()
-            try:
-                client_msg = ClientMessage.model_validate(data)
-                logger.info(f"Получено валидное сообщение: {client_msg.type}")
+        async for message in websocket.iter_json():
+            msg_type = message.get("type")
+            payload = message.get("payload", {})
 
-                if client_msg.type == "POSE_DATA":
-                    response_msg = analyzer.process_frame(client_msg.payload)
-                elif client_msg.type == "END_SESSION":
-                    logger.info(
-                        "Получен запрос на завершение сессии. Генерация отчета."
-                    )
-                    response_msg = analyzer.generate_report()
-                    await websocket.send_json(response_msg.model_dump())
-                    break  # Выходим из цикла и закрываем соединение
-                else:
-                    response_payload = {
-                        "status": "processed",
-                        "original_type": client_msg.type,
-                    }
-                    response_msg = ServerMessage(type="INFO", payload=response_payload)
+            if msg_type == "START_SESSION":
+                analyzer, exercise_type = await _handle_start_session(
+                    websocket, payload
+                )
 
-                await websocket.send_json(response_msg.model_dump())
+            elif msg_type in ("POSEDATA", "POSE_DATA"):
+                await _handle_pose_data(websocket, analyzer, payload)
 
-            except ValidationError as e:
-                logger.warning(f"Ошибка валидации данных от клиента: {e.errors()}")
-                error_payload = {"errors": e.errors()}
-                error_msg = ServerMessage(type="ERROR", payload=error_payload)
-                await websocket.send_json(error_msg.model_dump())
+            elif msg_type in ("END_SESSION", "ENDSESSION"):
+                await _handle_end_session(websocket, analyzer, exercise_type)
+                # Сброс для новой сессии
+                analyzer = None
+                exercise_type = None
 
     except WebSocketDisconnect:
-        logger.info("WebSocket-соединение разорвано клиентом.")
+        logger.info("WebSocket disconnected")
     except Exception as e:
-        logger.error(f"Произошла неперехваченная ошибка в WebSocket: {e}")
-        await websocket.close(code=1011)
+        logger.error(f"WebSocket error: {e}")
+        try:
+            await websocket.send_json(
+                {"type": "ERROR", "payload": {"message": "Internal server error"}}
+            )
+        except Exception:  # nosec B110
+            # Игнорируем ошибки при попытке отправить сообщение в закрытый сокет
+            pass

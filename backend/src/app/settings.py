@@ -26,6 +26,9 @@ class Settings(BaseSettings):
     # Для локальной разработки можно использовать ngrok
     WEB_APP_URL: str = "https://your-domain.com"
 
+    # OpenAI API Key для TTS
+    OPENAI_API_KEY: str = "YOUR_OPENAI_API_KEY_HERE"
+
 
 # Создаем единственный экземпляр настроек,
 # который будет использоваться во всем приложении
